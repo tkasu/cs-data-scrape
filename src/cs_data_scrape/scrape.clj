@@ -94,7 +94,7 @@
                                                     [:tbody]))))))))
             (col-index :Date header-data)))]
       ;TODO implement :id (remove /match/ from link)
-      (print {:id nil
+      (print {:id (str/replace (:href (:attrs (first match-data))) #"/match/"  "")
               :link (str url-base (:href (:attrs (first match-data))))}))
     (t/close)))
 

@@ -1,9 +1,17 @@
-(ns cs-data-scrape.webdriver-scrape
+(ns cs-data-scrape.scrape
   (:require [clj-webdriver.taxi :as t]
             [net.cgrand.enlive-html :as e]
             [clojure.string :as str]))
 
+(def url-base "http://www.hltv.org")
+
 (def url "http://www.hltv.org/matches/archive/")
+
+
+(defn col-index [col-name head-map]
+  (:column-num
+   (first
+    (filter #(= (:content %) col-name) head-map))))
 
 (defn column-raw-data []
       (first
@@ -40,7 +48,7 @@
    []
    thead-col-data))
 
-(defn scrape! []
+(defn scrape-header! []
   (do
     (t/set-driver! {:browser :firefox})
     (t/to url)
@@ -48,14 +56,52 @@
     (Thread/sleep (rand 5000))
     (t/wait-until (t/exists? {:tag :div
                               :id "matches"}))
-    (clojure.pprint/pprint
+    (println
      (thead-data-w-index
       (thead-cols
        (cleaned-thead-data
         (column-raw-data)))))
     (t/close)))
 
-(scrape!)
+(defn scrape-match! []
+  (do
+    (t/set-driver! {:browser :firefox})
+    (t/to url)
+    ;Random wait 0-5s
+    (Thread/sleep (rand 5000))
+    (t/wait-until (t/exists? {:tag :div
+                              :id "matches"}))
+    (let [header-data
+          (thead-data-w-index
+           (thead-cols
+            (cleaned-thead-data
+             (column-raw-data))))
+          match-data
+          (:content
+           (nth
+            (remove-from-col-that-start-with
+             "\n "
+             (:content
+              (first
+               (remove-from-col-that-start-with "\n  "
+                                                (rest
+                                                 (:content
+                                                  (first
+                                                   (e/select
+                                                    (e/html-snippet
+                                                     (t/html (t/find-element {:tag :div
+                                                                              :id "matches"})))
+                                                    [:tbody]))))))))
+            (col-index :Date header-data)))]
+      ;TODO implement :id (remove /match/ from link)
+      (print {:id nil
+              :link (str url-base (:href (:attrs (first match-data))))}))
+    (t/close)))
+
+
+(scrape-header!)
+
+(scrape-match!)
 
 
 (comment 
@@ -65,7 +111,32 @@
 
 (t/close)
 
+(in-ns 'cs-data-scrape.scrape)
+
+(print
+ (:content
+  ;TODO replace first based on column name
+  (nth
+   (remove-from-col-that-start-with
+    "\n "
+    (:content
+     (first
+      (remove-from-col-that-start-with "\n  "
+                                       (rest
+                                        (:content
+                                         (first
+                                          (e/select
+                                           (e/html-snippet
+                                            (t/html (t/find-element {:tag :div
+                                                                     :id "matches"})))
+                                           [:tbody]))))))))
+   0)))
+
+url
+
 (rand 5)
+
+(print (rand 5))
 
 (time (Thread/sleep (rand 5000)))
 

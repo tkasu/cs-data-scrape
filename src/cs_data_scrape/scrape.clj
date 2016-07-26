@@ -15,6 +15,10 @@
    (first
     (filter #(= (:content %) col-name) head-map))))
 
+(defn remove-from-col-that-start-with [col-beg col]
+  "Removes entities from collections that begin with col-beg"
+  (remove (fn [c] (re-find (re-pattern (str "^" col-beg)) (str c))) col))
+
 (defn column-raw-data []
       (first
        (:content
@@ -25,9 +29,27 @@
                                     :id "matches"})))
           [:tbody])))))
 
-(defn remove-from-col-that-start-with [col-beg col]
-  "Removes entities from collections that begin with col-beg"
-  (remove (fn [c] (re-find (re-pattern (str "^" col-beg)) (str c))) col))
+(defn clean-single-match-data [raw-single-match header-data]
+  (:content
+   (nth
+    (remove-from-col-that-start-with
+     "\n "
+     (:content
+      ;TODO scrape nth instead of first available match
+      raw-single-match))
+    (col-index :Date header-data))))
+
+(defn match-raw-data []
+  (remove-from-col-that-start-with
+   "\n "
+   (rest
+    (:content
+     (first
+      (e/select
+       (e/html-snippet
+        (t/html (t/find-element {:tag :div
+                                 :id "matches"})))
+       [:tbody]))))))
 
 (defn cleaned-thead-data [col-raw]
   "Cleanup for raw column data."
@@ -78,28 +100,20 @@
            (thead-cols
             (cleaned-thead-data
              (column-raw-data))))
-          match-data
-          (:content
-           (nth
-            (remove-from-col-that-start-with
-             "\n "
-             (:content
-              (first
-               (remove-from-col-that-start-with "\n  "
-                                                (rest
-                                                 (:content
-                                                  (first
-                                                   (e/select
-                                                    (e/html-snippet
-                                                     (t/html (t/find-element {:tag :div
-                                                                              :id "matches"})))
-                                                    [:tbody]))))))))
-            (col-index :Date header-data)))]
-      (print {:id (str/replace (:href (:attrs (first match-data))) #"/match/"  "")
-              :link (str url-base (:href (:attrs (first match-data))))
-              ;Date stored as org.joda.time.DateTime.
-              ;TBD if this should be converted to java.sql.Date in this phase or during database import
-              :match-date (timef/parse formatter-match-date (first (:content (first match-data))))}))
+          match-data (match-raw-data)]
+      (print (reduce
+              (fn [acc next]
+                (let [cleaned-match
+                      (first (clean-single-match-data next header-data))]
+                 (conj
+                  acc
+                  {:id (str/replace (:href (:attrs cleaned-match)) #"/match/"  "")
+                   :link (str url-base (:href (:attrs cleaned-match)))
+                   ;Date stored as org.joda.time.DateTime.
+                   ;TBD if this should be converted to java.sql.Date in this phase or during database import
+                   :match-date (timef/parse formatter-match-date (first (:content cleaned-match)))})))
+             []
+             match-data)))
     (t/close)))
 
 (comment 

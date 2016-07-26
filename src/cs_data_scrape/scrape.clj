@@ -1,12 +1,14 @@
 (ns cs-data-scrape.scrape
   (:require [clj-webdriver.taxi :as t]
             [net.cgrand.enlive-html :as e]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clj-time.format :as timef]))
 
 (def url-base "http://www.hltv.org")
 
 (def url "http://www.hltv.org/matches/archive/")
 
+(def formatter-match-date (timef/formatter "MMM dd, YYYY"))
 
 (defn col-index [col-name head-map]
   (:column-num
@@ -93,120 +95,18 @@
                                                                               :id "matches"})))
                                                     [:tbody]))))))))
             (col-index :Date header-data)))]
-      ;TODO implement :id (remove /match/ from link)
       (print {:id (str/replace (:href (:attrs (first match-data))) #"/match/"  "")
-              :link (str url-base (:href (:attrs (first match-data))))}))
+              :link (str url-base (:href (:attrs (first match-data))))
+              ;Date stored as org.joda.time.DateTime.
+              ;TBD if this should be converted to java.sql.Date in this phase or during database import
+              :match-date (timef/parse formatter-match-date (first (:content (first match-data))))}))
     (t/close)))
 
-
-(scrape-header!)
-
-(scrape-match!)
-
-
 (comment 
-;WIP functions
+;Test code snippets
 
-  (thead-data-w-index (thead-cols (cleaned-thead-data (column-raw-data))))
+  (scrape-header!)
 
-(t/close)
+  (scrape-match!)
 
-(in-ns 'cs-data-scrape.scrape)
-
-(print
- (:content
-  ;TODO replace first based on column name
-  (nth
-   (remove-from-col-that-start-with
-    "\n "
-    (:content
-     (first
-      (remove-from-col-that-start-with "\n  "
-                                       (rest
-                                        (:content
-                                         (first
-                                          (e/select
-                                           (e/html-snippet
-                                            (t/html (t/find-element {:tag :div
-                                                                     :id "matches"})))
-                                           [:tbody]))))))))
-   0)))
-
-url
-
-(rand 5)
-
-(print (rand 5))
-
-(time (Thread/sleep (rand 5000)))
-
-(t/set-driver! {:browser :firefox})
-
-(t/to url)
-
-(t/exists? {:tag :div
-            :id "matches"})
-
-(e/select
- (e/html-snippet
-  (t/html (t/find-element {:tag :div
-                           :id "matches"})))
- [:tbody])
-
- (clojure.pprint/pprint (first
-                         (:content
-                          (first
-                           (e/select
-                            (e/html-snippet
-                             (t/html (t/find-element {:tag :div
-                                                      :id "matches"})))
-                            [:tbody])))))
-
-(println (+ 4 4 ))
-
- (def col-raw (first
-               (:content
-                (first
-                 (e/select
-                  (e/html-snippet
-                   (t/html (t/find-element {:tag :div
-                                            :id "matches"})))
-                  [:tbody])))))
-
- (remove #(clojure.string/includes? % "\n  ") (:content col-raw))
-
- (def thead-data
-   (filter
-    #(= (:tag %) :td)
-    (remove-from-col-that-start-with "\n  " (:content col-raw))))
-
- thead-data
-
- (first thead-data)
-
- (rest thead-data)
-
- (reduce #(conj %1 (keyword (first (:content %2)))) [] thead-data)
-
- (def thead-keywords
-   (reduce #(conj %1 (keyword (first (:content %2)))) [] thead-data))
-
-thead-keywords
-
-(.indexOf thead-keywords :Teams)
-
-
- (thead-cols thead-data)
-
- (thead-data-w-index (thead-cols thead-data))
-
-
-  (+ 2 2)
-
-  (+ 2 2)
-
-  (def test-str (str "^" "\n "))
-
-  (re-find (re-pattern (str "^" "\n  ")) "\n  loloo")
-
-)
+  )

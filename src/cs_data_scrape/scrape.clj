@@ -24,11 +24,8 @@
       (first
        (:content
         (first
-         (e/select
-          (e/html-snippet
-           (t/html (t/find-element {:tag :div
-                                    :id "matches"})))
-          [:tbody])))))
+         (e/html-snippet
+          (t/html (t/find-element {:css "div#matches>table>tbody"})))))))
 
 (defn clean-single-match-data [raw-single-match header-data]
   (:content
@@ -46,11 +43,8 @@
    (rest
     (:content
      (first
-      (e/select
-       (e/html-snippet
-        (t/html (t/find-element {:tag :div
-                                 :id "matches"})))
-       [:tbody]))))))
+      (e/html-snippet
+       (t/html (t/find-element {:css "div#matches>table>tbody"}))))))))
 
 (defn cleaned-thead-data [col-raw]
   "Cleanup for raw column data."

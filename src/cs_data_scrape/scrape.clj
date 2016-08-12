@@ -126,6 +126,12 @@
       (reduce #(conj %1 (first (:content %2)))  #{} vote-html)
       (remove nil?))))
 
+(defn team-by-css-style [css-style]
+  (cond
+   (= css-style "color: red;") "T"
+   (= css-style "color: blue;") "CT"
+   :else :error))
+
 (defn parse-map-result [span-parent-div-elem]
  (let [res-span (-> span-parent-div-elem
                     t/xpath
@@ -162,12 +168,6 @@
         :team2-r2-side (-> (nth span-elems 5)
                            (t/attribute :style)
                            team-by-css-style)}))))
-
-(defn team-by-css-style [css-style]
-  (cond
-   (= css-style "color: red;") "T"
-   (= css-style "color: blue;") "CT"
-   :else :error))
 
   (defn get-child-img-src [elem]
     (let [child-img-xpath

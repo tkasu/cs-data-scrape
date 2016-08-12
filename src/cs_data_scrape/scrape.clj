@@ -112,15 +112,16 @@
 
 (defn match-votes []
    (let [raw-html
-         (->>
+         (when (t/exists? {:xpath "//div[text()='Veto process']/.."})
+          (->>
                                         ;xpath to parent div-element of 'Veto process textbox'
-          {:xpath "//div[text()='Veto process']/.."}
-          t/find-element
-          t/html
-          e/html-snippet
-          first
-          :content
-          (remove-from-col-that-start-with "\n  "))
+           {:xpath "//div[text()='Veto process']/.."}
+           t/find-element
+           t/html
+           e/html-snippet
+           first
+           :content
+           (remove-from-col-that-start-with "\n  ")))
          vote-html (rest raw-html)]
      (->>
       (reduce #(conj %1 (first (:content %2)))  #{} vote-html)
@@ -169,11 +170,13 @@
                            (t/attribute :style)
                            team-by-css-style)}))))
 
-  (defn get-child-img-src [elem]
-    (let [child-img-xpath
-          (-> elem
-              t/xpath
-              (str "/img"))]
+(defn get-child-img-src [elem]
+    (let [elem-xpath (t/xpath elem)
+          child-img-xpath
+          (if-not (= \] (last elem-xpath))
+            ;t/xpath omit div number for the first div
+            (str elem-xpath "[1]/img")
+            (str elem-xpath "/img")) ]
       (when (t/exists? {:xpath child-img-xpath})
        (-> (t/find-element {:xpath child-img-xpath})
            (t/attribute :src)))))
@@ -264,8 +267,8 @@
   (do
                                         ;Random wait
     (println (time (Thread/sleep (+ 2000 (rand 3000)))))
-                                        ;Wait Veto Process vote box is found
-    (t/wait-until (t/exists? {:xpath "//div[text()='Veto process']"}))
+                                        ;Wait Maps box is found
+    (t/wait-until (t/exists? {:xpath "//div[@class='hotmatchboxheader']/div[starts-with(text(),'Maps')]"}))
     (let [votes (match-votes)
           gen-data (match-general-data)
           map-results (match-results-for-maps)]
@@ -285,8 +288,29 @@
 
   (def t-elems (t/find-elements {:xpath "//div[@class='hotmatchboxheader']/div[starts-with(text(),'Maps')]/../../div[@class='hotmatchbox']/div"}))
 
-  (def scrape-results (scrape-matches-after! "2016-06-30"))
+  (parse-map-result (first t-elems))
+
+  (get-child-img-src (first t-elems))
+
+  (t/xpath (nth t-elems 2))
+
+  (if-not (= \] (last (t/xpath (nth t-elems 2))))
+    (str (t/xpath ) ""))
+
+  
+
+  (get-child-img-src-t (nth t-elems 3))
+  
+  (def scrape-results (scrape-matches-after! "2016-08-01"))
   
   (println scrape-results)
+
+  (def test-urls (reduce #(conj %1 (:link %2)) [] (take 10 scrape-results)))
+
+  test-urls
+
+  (def test-res (reduce #(conj %1 (scrape-match! %2)) [] test-urls))
+
+  (spit "10-games.txt" test-res)
 
   )

@@ -1,9 +1,12 @@
 (ns cs-data-scrape.scrape
   (:require [clj-webdriver.taxi :as t]
+            [clj-webdriver.firefox :as t-ff]
             [net.cgrand.enlive-html :as e]
             [clojure.string :as str]
             [clj-time.core :as time]
-            [clj-time.format :as timef]))
+            [clj-time.format :as timef]
+            [clj-http.client :as http]
+            [cheshire.core :as json]))
 
 (def url-base "http://www.hltv.org")
 
@@ -133,42 +136,53 @@
    (= css-style "color: blue;") "CT"
    :else :error))
 
-(defn parse-map-result [span-parent-div-elem]
- (let [res-span (-> span-parent-div-elem
-                    t/xpath
-                    (str "/span"))]
-   (when (t/exists? {:xpath res-span})
-     (let [span-elems (t/find-elements {:xpath res-span})] 
-       {:team1-score (-> (nth span-elems 0)
-                         (t/attribute :text)
-                         Integer.)
-        :team2-score (-> (nth span-elems 1)
-                         (t/attribute :text)
-                         Integer.)
-        :team1-r1-score (-> (nth span-elems 2)
-                            (t/attribute :text)
-                            Integer.)
-        :team1-r1-side (-> (nth span-elems 2)
+   (def xf-parse-map-res 
+     (fn [xf]
+       (let [idx (volatile! 0)]
+         (fn
+           ([] (xf))
+           ([result] (xf result))
+           ([result item]
+            (let [index idx]  
+              (do (vreset! index (inc @index))
+                  (xf result
+                      {(keyword (str "team1-score-r" @index)) 
+                       (-> item
+                           (nth 0)
+                           (t/attribute :text)
+                           Integer.)
+                       (keyword (str "team2-score-r" @index))
+                       (-> item
+                           (nth 1)
+                           (t/attribute :text)
+                           Integer.)
+                       (keyword (str "team1-side-r" @index)) 
+                       (-> item
+                           (nth 0)
                            (t/attribute :style)
                            team-by-css-style)
-        :team2-r1-score (-> (nth span-elems 3)
-                            (t/attribute :text)
-                            Integer.)
-        :team2-r1-side (-> (nth span-elems 3)
+                       (keyword (str "team2-side-r" @index)) 
+                       (-> item
+                           (nth 1)
                            (t/attribute :style)
-                           team-by-css-style)
-        :team1-r2-score (-> (nth span-elems 4)
-                            (t/attribute :text)
-                            Integer.)
-        :team1-r2-side (-> (nth span-elems 4)
-                           (t/attribute :style)
-                           team-by-css-style)
-        :team2-r2-score (-> (nth span-elems 5)
-                            (t/attribute :text)
-                            Integer.)
-        :team2-r2-side (-> (nth span-elems 5)
-                           (t/attribute :style)
-                           team-by-css-style)}))))
+                           team-by-css-style)}))))))))
+
+  (defn parse-map-result [span-parent-div-elem]
+    (let [res-span (-> span-parent-div-elem
+                       t/xpath
+                       (str "/span"))]
+      (when (t/exists? {:xpath res-span})
+        (let [span-elems (t/find-elements {:xpath res-span})
+              span-elems-for-round (partition-all 2 span-elems)
+              score-map {:team1-score-map (-> (first span-elems-for-round)
+                                              (nth 0)
+                                              (t/attribute :text)
+                                              Integer.)
+                         :team2-score-map (-> (first span-elems-for-round)
+                                              (nth 1)
+                                              (t/attribute :text)
+                                              Integer.)}]
+              (transduce xf-parse-map-res conj score-map (rest span-elems-for-round))))))
 
 (defn get-child-img-src [elem]
     (let [elem-xpath (t/xpath elem)
@@ -181,19 +195,32 @@
        (-> (t/find-element {:xpath child-img-xpath})
            (t/attribute :src)))))
 
+(defn get-map-from-link [link]
+    "Example link: http://static.hltv.org//images/hotmatch/overpass.png"
+    (when link
+        (-> (re-find #"/hotmatch/(.+?).png" link)
+            (get 1))))
+
 (defn match-results-for-maps [] 
   (let [elements (t/find-elements {:xpath "//div[@class='hotmatchboxheader']/div[starts-with(text(),'Maps')]/../../div[@class='hotmatchbox']/div"})
         next-map (atom nil)
         index (atom 0)
+        map-num (atom 0)
         results (atom [])]
     (loop [elems elements]
       (if (empty? elems)
         @results
         (do
           (if @next-map
-            (reset! results (conj @results {:map @next-map
-                                            :map-results (parse-map-result (first elems))})))
-          (reset! next-map (get-child-img-src (first elems)))
+            (do
+              (reset! map-num (inc @map-num))
+              (reset! results (conj @results {:map @next-map
+                                              :map-num @map-num
+                                              :map-results (parse-map-result (first elems))}))))
+          (reset! next-map (-> elems
+                               first
+                               get-child-img-src
+                               get-map-from-link))
           (println (str @next-map " " @index))
           (reset! index (inc @index))
           (recur (rest elems)))))))

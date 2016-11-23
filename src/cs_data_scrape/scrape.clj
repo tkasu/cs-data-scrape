@@ -310,34 +310,197 @@
   test-match-url
   
   (t/to test-match-url)
+
+  (t/to "http://google.fi")
   
+  (def err-match "http://www.hltv.org/match/2303857-t1-academy-cnb-esea-open-season-22-brazil")
+
   (spit "test-match.txt" (scrape-match! test-match-url))
-
-  (def t-elems (t/find-elements {:xpath "//div[@class='hotmatchboxheader']/div[starts-with(text(),'Maps')]/../../div[@class='hotmatchbox']/div"}))
-
-  (parse-map-result (first t-elems))
-
-  (get-child-img-src (first t-elems))
-
-  (t/xpath (nth t-elems 2))
-
-  (if-not (= \] (last (t/xpath (nth t-elems 2))))
-    (str (t/xpath ) ""))
-
   
+  (println (match-raw-data))
+a
+  (def  header-data
+    (thead-data-w-index
+     (thead-cols
+      (cleaned-thead-data
+       (column-raw-data)))))
 
-  (get-child-img-src-t (nth t-elems 3))
-  
-  (def scrape-results (scrape-matches-after! "2016-08-01"))
-  
-  (println scrape-results)
+  (def match-data (match-raw-data))
 
-  (def test-urls (reduce #(conj %1 (:link %2)) [] (take 10 scrape-results)))
+  (def page-matches
+    (reduce
+     (fn [acc next]
+       (let [cleaned-match
+             (first (clean-single-match-data next header-data))]
+         (conj
+          acc
+          {:id (str/replace (:href (:attrs cleaned-match)) #"/match/"  "")
+           :link (str url-base (:href (:attrs cleaned-match)))
+                                        ;Date stored as org.joda.time.DateTime.
+                                        ;TBD if this should be converted to java.sql.Date in this phase or during database import
+           :match-date (timef/parse formatter-match-date (first (:content cleaned-match)))})))
+     []
+     match-data))
 
-  test-urls
+(println page-matches)
 
-  (def test-res (reduce #(conj %1 (scrape-match! %2)) [] test-urls))
+(scrape-match! err-match)
 
-  (spit "10-games.txt" test-res)
+(def t-elems (t/find-elements {:xpath "//div[@class='hotmatchboxheader']/div[starts-with(text(),'Maps')]/../../div[@class='hotmatchbox']/div"}))
 
-  )
+(parse-map-result (first t-elems))
+
+(first t-elems)
+
+(def spans (t/find-elements {:xpath (str (t/xpath (nth t-elems 4)) "/span")}))
+
+spans
+
+(def d1 (t/new-driver {:browser :firefox}))
+
+(def d2 (t/new-driver {:browser :firefox}))
+
+(t/to d1 "http://www.hltv.org")
+
+(t/to d2 "http://engadget.com")
+
+
+
+t-xf
+
+(def t-t-spans (partition-all 2 spans))
+
+(-> (first t-t-spans)
+    (nth 0)
+    (t/attribute :text)
+    Integer.)
+
+(transduce (map inc) + [1 2 3 4])
+
+(transduce xf-parse-map-res conj (rest t-t-spans))
+
+(-> (first (partition-all 2 spans))
+    first
+    (t/attribute :text))
+
+
+
+(get-child-img-src (first t-elems))
+
+(keyword "lol")
+
+(t/xpath (nth t-elems 2))
+
+(if-not (= \] (last (t/xpath (nth t-elems 2))))
+  (str (t/xpath ) ""))
+
+(def t-link "http://static.hltv.org//images/hotmatch/overpass.png")
+
+t-link
+
+(re-find #"png" nil)
+
+
+
+
+(get-map-from-link t-link)
+
+(get-child-img-src-t (nth t-elems 3))
+
+(def scrape-results (scrape-matches-after! "2016-11-15"))
+
+(println scrape-results)
+
+(spit "2016-08-12 2016-08-MATCH-LINKS.txt" scrape-results)
+
+#_(def test-urls (reduce #(conj %1 (:link %2)) [] (take 10 scrape-results)))
+
+(def test-urls (reduce #(conj %1 (:link %2)) [] scrape-results))
+
+test-urls
+
+(def test-res (reduce #(conj %1 (scrape-match! %2)) [] test-urls))
+
+(spit "10-MATCHES.txt" test-res)
+
+(def t-proxy (http/get "http://gimmeproxy.com/api/getProxy"))
+
+(json/parse-string (:body t-proxy) true)
+
+(defn get-proxy [] 
+  (-> (http/get "http://gimmeproxy.com/api/getProxy?protocol=http")
+      :body
+      (json/parse-string true)))
+
+(def test (get-proxy))
+
+(let [p (get-proxy)]
+  (println (str (:curl p) " " (:port p))))
+
+(:ipPort test)
+
+(:ip (get-proxy))
+
+(:ip test)
+
+(defn new-ff-driver []
+  (let [proxy (get-proxy)]
+    (println "ip: " (:ip proxy) " port: " (:port proxy))
+    (t/new-driver {:browser :firefox
+                   :profile (doto 
+                                (t-ff/new-profile)
+                              (t-ff/set-preferences 
+                               {:network.proxy.type 1
+                                :network.proxy.http #_"124.88.67.30:83"  (:ip proxy)
+                                :network.proxy.http_port #_"83" (Integer. (:port proxy))
+                                :network.proxy.ssl #_"124.88.67.30:83"  (:ip proxy)
+                                :network.proxy.ssl_port #_"83" (Integer. (:port proxy))
+                                })
+                              (t-ff/write-to-disk))})))
+
+(def ff-profile
+  (doto (t-ff/new-profile)
+    (t-ff/set-preferences 
+     {:browser.startup.homepage "http://www.whatismyproxy.com/"
+      :network.proxy.type 1
+      :network.proxy.http #_"124.88.67.30"  (:ip proxy)
+      :network.proxy.http_port #_(Integer. "83") (Integer. (:port proxy))
+      :network.proxy.ssl #_"124.88.67.30"  (Integer. (:ip proxy))
+      :network.proxy.ssl_port #_(Integer. "83") (Integer. (:port proxy))
+      })))
+
+(t-ff/write-to-disk ff-profile)
+
+(def ff-loc "/home/tomikasu/programming/cs-data-scrape")
+
+(spit ff-loc (t-ff/json ff-profile))
+
+(def test-ff (new-ff-driver))
+
+(def lol-test
+  (t/new-driver {:browser :firefox
+                 :profile ff-profile}))
+
+test-ff
+
+(doto
+    )
+test-ff
+
+(t/to test-ff "http://www.whatismyproxy.com/")
+
+(t-ff/write-to-disk test-ff)
+
+(json/parse-string t-proxy)
+
+(println t-proxy)
+
+(:ip (:body t-proxy))
+
+)
+
+
+
+
+
+

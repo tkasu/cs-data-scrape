@@ -10,14 +10,12 @@ match_date DATE
 */
 CREATE TABLE match_result
 (
-id SERIAL PRIMARY KEY,
-match_id VARCHAR(255),
-team1_name VARCHAR(255) NOT NULL,
-team2_name VARCHAR(255) NOT NULL,
-team1_score INT NOT NULL,
-team2_score INT NOT NULL,
-team1_result VARCHAR(1) NOT NULL,
-team2_result VARCHAR(1) NOT NULL,
+match_id VARCHAR(255) NOT NULL,
+side_id INT NOT NULL,
+team_name VARCHAR(255) NOT NULL,
+team_score INT NOT NULL,
+team_result VARCHAR(1) NOT NULL,
+PRIMARY KEY (match_id, side_id),
 FOREIGN KEY (match_id) REFERENCES match(match_id)
 );
 
@@ -27,11 +25,25 @@ FOREIGN KEY (match_id) REFERENCES match(match_id)
 
 CREATE TABLE match_map_result
 (
-result_id INT,
+match_id VARCHAR(255) NOT NULL,
+side_id INT NOT NULL,
 map_num INT NOT NULL,
 map_name VARCHAR(255) NOT NULL,
-team1_score_map INT NOT NULL,
-team2_score_map INT NOT NULL,
-PRIMARY KEY (result_id, map_num),
-FOREIGN KEY (result_id) REFERENCES match_result(id)
+team_score_map INT,
+PRIMARY KEY (match_id, side_id, map_num),
+FOREIGN KEY (match_id, side_id) REFERENCES match_result(match_id, side_id)
 );
+
+CREATE TABLE match_map_half_result
+(
+match_id VARCHAR(255) NOT NULL,
+side_id INT NOT NULL,
+map_num INT NOT NULL,
+half_id INT NOT NULL,
+half_side VARCHAR(2) NOT NULL,
+team_score_half INT NOT NULL,
+PRIMARY KEY (match_id, side_id, map_num, half_id),
+FOREIGN KEY (match_id, side_id, map_num) REFERENCES match_map_result(match_id, side_id, map_num)
+);
+
+        

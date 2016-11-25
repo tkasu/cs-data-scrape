@@ -46,4 +46,16 @@ PRIMARY KEY (match_id, side_id, map_num, half_id),
 FOREIGN KEY (match_id, side_id, map_num) REFERENCES match_map_result(match_id, side_id, map_num)
 );
 
+CREATE TABLE match_vote
+(
+match_id VARCHAR(255) NOT NULL,
+vote_id INTEGER NOT NULL,
+raw VARCHAR(255) NOT NULL,
+voter_name VARCHAR(255),
+action VARCHAR(255),
+map_name VARCHAR(255),
+PRIMARY KEY (match_id, vote_id),
+FOREIGN KEY (match_id) REFERENCES match(match_id)
+);
+
         

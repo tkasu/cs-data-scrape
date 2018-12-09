@@ -68,8 +68,8 @@
         :side_id 2
         :map_num i
         :map_name (:map map)
-        :team_score_map (:team2-score-map (:map-results map))}))
-    ))
+        :team_score_map (:team2-score-map (:map-results map))}))))
+
 
 
 (defn insert-match-result! [id result-m]
@@ -117,9 +117,9 @@
                  :map_num (:map-num %2)
                  :half_id 2
                  :half_side (:team2-side-r2 (:map-results %2))
-                 :team_score_half (:team2-score-r2 (:map-results %2))}
+                 :team_score_half (:team2-score-r2 (:map-results %2))})
                 
-                )
+
          []
          ;no halfs that are not played
          (filter :map-results map-result-m))
